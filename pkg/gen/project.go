@@ -36,6 +36,27 @@ func (p *ProjectGenerator) Fill(d map[string]string) {
 	}
 }
 
+// FillProjectMetadataFromJson fills up project metadata from json file
+func (p *ProjectGenerator) FillProjectMetadataFromJson() {
+	data := utility.ReadJsonFile("geng.json")
+	for k, v := range data {
+		switch k {
+		case constant.ProjectNameKEY:
+			p.Name = v.(string)
+		case constant.ProjectModuleNameKEY:
+			p.ModuleName = v.(string)
+		case constant.AuthorKEY:
+			p.Author = v.(string)
+		case constant.ProjectDescriptionKEY:
+			p.Description = v.(string)
+		case constant.GoVersionKEY:
+			p.GoVersion = v.(string)
+		case constant.DirectoryKEY:
+			p.Directory = v.(string)
+		}
+	}
+}
+
 // Validate validates generated project arguments
 func (p *ProjectGenerator) Validate() error {
 	p.GoVersion = utility.CheckVersion(p.GoVersion)
@@ -64,7 +85,7 @@ func (p *ProjectGenerator) Generate(selectedInfra []int) error {
 	templatePath := utility.IgnoreWindowsPath(filepath.Join("templates", "wesionary", "project"))
 	err := utility.GenerateFiles(templates.FS, templatePath, p.Infra.Directory, data)
 	if err != nil {
-		return fmt.Errorf("Error generating file: %v", err)
+		return fmt.Errorf("error generating file: %v", err)
 	}
 
 	utility.PrintColorizeProjectDetail(data)
@@ -75,12 +96,12 @@ func (p *ProjectGenerator) Generate(selectedInfra []int) error {
 	}
 
 	if len(selectedInfra) == 0 {
-		return errors.New("No infrastructure selected")
+		return errors.New("no infrastructure selected")
 	}
 
 	selectedInfras := p.Infra.GetSelectedItems(selectedInfra)
 	if err := p.Infra.Generate(data, selectedInfra); err != nil {
-		return fmt.Errorf("Generation error: %v\n", err)
+		return fmt.Errorf("generation error: %v", err)
 	}
 
 	utility.PrintColorizeInfrastructureDetail(data, selectedInfras)
