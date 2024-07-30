@@ -5,14 +5,56 @@ import (
 	"github.com/spf13/viper"
 )
 
-// BindStrFlag binds string flag to the passed command
-func BindStrFlag(cmd *cobra.Command, key, short, def, desc string) {
-	cmd.Flags().StringP(key, short, def, desc)
-	viper.BindPFlag(key, cmd.Flags().Lookup(key))
+type FlagItem struct {
+	Name  string
+	Short string
+
+	// Def default value passed in flag item, type is defaulted to string
+	Def  any
+	Desc string
+
+	Persistent bool
 }
 
-// BindStrFlag binds string flag to the passed command
-func BindStrPFlag(cmd *cobra.Command, key, short, def, desc string) {
-	cmd.PersistentFlags().StringP(key, short, def, desc)
-	viper.BindPFlag(key, cmd.PersistentFlags().Lookup(key))
+// SetFlags sets the flags for the command
+func SetFlags(cmd *cobra.Command, items []FlagItem) {
+	for _, i := range items {
+
+		if i.Def == nil {
+			f := cmd.Flags()
+			if i.Persistent {
+				f = cmd.PersistentFlags()
+			}
+
+			f.StringP(i.Name, i.Short, "", i.Desc)
+		}
+
+		if def, ok := i.Def.([]string); ok {
+
+			f := cmd.Flags()
+			if i.Persistent {
+				f = cmd.PersistentFlags()
+			}
+
+			f.StringSliceP(i.Name, i.Short, def, i.Desc)
+		}
+
+		if def, ok := i.Def.(string); ok {
+
+			f := cmd.Flags()
+			if i.Persistent {
+				f = cmd.PersistentFlags()
+			}
+
+			f.StringP(i.Name, i.Short, def, i.Desc)
+		}
+
+	}
+}
+
+// BindFlag binds the flag to the viper
+func BindFlag(cmd *cobra.Command, items []FlagItem) {
+	for _, i := range items {
+		viper.BindPFlag(i.Name, cmd.Flags().Lookup(i.Name))
+	}
 }

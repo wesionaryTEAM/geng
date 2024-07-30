@@ -22,12 +22,12 @@ func NewProjectGenerator(cfg *models.Project, fs embed.FS) *ProjectGenerator {
 	}
 }
 
-func (p *ProjectGenerator) Generate() error {
+func (g *ProjectGenerator) Generate() error {
 
 	tempPath := filepath.Join("templates", "wesionary", "project")
 	tempPath = utils.IgnoreWindowsPath(tempPath)
 
-	generatedFiles, err := utils.GenerateFiles(p.fs, tempPath, p.cfg.Directory, p.cfg)
+	generatedFiles, err := utils.GenerateFiles(g.fs, tempPath, g.cfg.Directory, g.cfg)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (p *ProjectGenerator) Generate() error {
 	logger.Info("project generation success")
 	logger.Infof("generated %d files", len(generatedFiles))
 
-	if err := utils.ModTidy(p.cfg.Directory); err != nil {
+	if err := utils.ModTidy(g.cfg.Directory); err != nil {
 		return err
 	}
 

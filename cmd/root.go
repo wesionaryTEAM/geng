@@ -12,11 +12,17 @@ var rootCmd = &cobra.Command{
 	Long:  "geng is a CLI tool for golang api project generation.",
 }
 
+var rootFlags = []utils.FlagItem{
+	{Name: "dir", Short: "d", Desc: "target directory for geng", Persistent: true},
+	{Name: "goversion", Short: "v", Desc: "golang version in mod file", Persistent: true},
+}
+
 func init() {
-	utils.BindStrPFlag(rootCmd, "dir", "d", "", "target directory to create project at")
-	utils.BindStrPFlag(rootCmd, "goversion", "v", "", "go version for project generation")
+	utils.SetFlags(rootCmd, rootFlags)
+	utils.BindFlag(rootCmd, rootFlags)
 
 	rootCmd.AddCommand(projectCmd)
+	rootCmd.AddCommand(infraCmd)
 }
 
 func Execute() {
