@@ -1,15 +1,20 @@
 package pkg
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+)
 
 type GengConfig struct {
 }
 
-func NewConfig() (*GengConfig, error) {
-	var cfg GengConfig
+// GetConfig get's configuration from viper
+func GetConfig[T any]() *T {
+	logger := GetLogger()
+
+	var cfg T
 	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, err
+		logger.Fatal("cannot unmarshal configuration object", "err", err)
 	}
 
-  return &cfg, nil
+	return &cfg
 }

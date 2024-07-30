@@ -11,10 +11,15 @@ var rootCmd = &cobra.Command{
 	Long:  "geng is a CLI tool for golang api project generation.",
 }
 
-func ExecuteWith(cfg *pkg.GengConfig) {
+func init() {
+	rootCmd.AddCommand(projectCmd)
+}
+
+func Execute() {
 	logger := pkg.GetLogger()
 
-  pkg.PrintIntro()
+	pkg.PrintIntro()
+
 	if err := rootCmd.Execute(); err != nil {
 		logger.Fatal("couldn't execute the necessary command", "err", err)
 	}
