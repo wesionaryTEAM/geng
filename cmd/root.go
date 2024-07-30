@@ -1,26 +1,21 @@
 package cmd
 
 import (
+	"github.com/mukezhz/geng/pkg"
 	"github.com/spf13/cobra"
 )
 
-// Root is the root of the command execution.
-// root can be thought of as a main program.
-var Root = &cobra.Command{
+var rootCmd = &cobra.Command{
 	Use:   "geng",
-	Short: "A generator for Cobra based Applications",
-	Long:  `geng is a CLI library for Go that empowers applications.`,
+	Short: "A golang project and module generator cli tool",
+	Long:  "geng is a CLI tool for golang api project generation.",
 }
 
-func init() {
-	Root.AddCommand(
-		newModuleCmd,
-		projectCmd,
-		runProjectCmd,
-		infraCmd,
-		serviceCmd,
-		seedProjectCmd,
-		startProjectCmd,
-		migrationProjectCmd,
-	)
+func ExecuteWith(cfg *pkg.GengConfig) {
+	logger := pkg.GetLogger()
+
+  pkg.PrintIntro()
+	if err := rootCmd.Execute(); err != nil {
+		logger.Fatal("couldn't execute the necessary command", "err", err)
+	}
 }
