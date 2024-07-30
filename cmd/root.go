@@ -12,6 +12,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	pkg.BindStrPFlag(rootCmd, "dir", "d", "", "target directory to create project at")
+	pkg.BindStrPFlag(rootCmd, "goversion", "v", "", "go version for project generation")
+
 	rootCmd.AddCommand(projectCmd)
 }
 

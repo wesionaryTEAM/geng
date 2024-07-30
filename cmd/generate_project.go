@@ -14,8 +14,6 @@ var projectCmd = &cobra.Command{
 
 func init() {
 	pkg.BindStrFlag(projectCmd, "author", "a", "wesionaryTEAM", "author for the project")
-	pkg.BindStrFlag(projectCmd, "dir", "d", "", "target directory to create project at")
-	pkg.BindStrFlag(projectCmd, "goversion", "g", "", "go version for project generation")
 	pkg.BindStrFlag(projectCmd, "mod", "m", "", "module name for the project")
 	pkg.BindStrFlag(projectCmd, "name", "n", "", "project name")
 	pkg.BindStrFlag(projectCmd, "desc", "e", "", "project description")
