@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/mukezhz/geng/pkg"
-	"github.com/mukezhz/geng/templates"
+	"github.com/mukezhz/geng/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +20,20 @@ func init() {
 
 func createProject(cmd *cobra.Command, args []string) {
 	logger := pkg.GetLogger()
-	input := pkg.GetConfig[templates.Project]()
+	input := pkg.GetConfig[models.Project]()
 
 	logger.Infof("input: %#v", input)
+
+	// TODO: show terminal ui if not present
+
+	// validate input data
+	if err := input.Validate(); err != nil {
+		logger.Fatal("validation for input failed.", "err", err)
+	}
+
+	// projectGenerator := pkg.NewProjectGenerator()
+	// if err := projectGenerator.Generate(input); err != nil {
+	// 	logger.Fatal("project generation failed.", "err", err)
+	// }
 
 }
