@@ -2,7 +2,10 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"strings"
+
+	"github.com/mukezhz/geng/pkg/utils"
 )
 
 type Project struct {
@@ -43,7 +46,7 @@ func (p *Project) AutoFill() {
 	}
 
 	if p.Directory == "" {
-		p.Directory = "./"
+		p.Directory = "./" + p.PackageName
 	}
 
 }
@@ -51,6 +54,15 @@ func (p *Project) AutoFill() {
 func (p *Project) Validate() error {
 	if p.PackageName == "" {
 		return errors.New("package name is not set")
+	}
+
+	empty, err := utils.IsDirEmpty(p.Directory)
+	if err != nil {
+		return fmt.Errorf("directory empty check failed. dir: %s, err: %w", p.Directory, err)
+	}
+
+	if !empty {
+		return fmt.Errorf("directory is not empty. dir: %s", p.Directory)
 	}
 
 	return nil

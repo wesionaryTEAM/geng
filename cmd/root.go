@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -12,8 +13,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	pkg.BindStrPFlag(rootCmd, "dir", "d", "", "target directory to create project at")
-	pkg.BindStrPFlag(rootCmd, "goversion", "v", "", "go version for project generation")
+	utils.BindStrPFlag(rootCmd, "dir", "d", "", "target directory to create project at")
+	utils.BindStrPFlag(rootCmd, "goversion", "v", "", "go version for project generation")
 
 	rootCmd.AddCommand(projectCmd)
 }

@@ -33,7 +33,12 @@ func (p *ProjectGenerator) Generate() error {
 	}
 
 	logger := pkg.GetLogger()
-	logger.Info("project generation success", "generated-files", generatedFiles)
+	logger.Info("project generation success")
+	logger.Infof("generated %d files", len(generatedFiles))
+
+	if err := utils.ModTidy(p.cfg.Directory); err != nil {
+		return err
+	}
 
 	return nil
 }
