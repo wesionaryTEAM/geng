@@ -82,7 +82,32 @@ func (g *InfraGenerator) Generate() error {
 
 	logger.Infof("updated infrastructure in %s", g.cfg.Directory)
 
+  if err := g.addSimilarServices(selectedChoices); err != nil {
+    return err
+  }
+
 	return nil
+}
+
+func (g *InfraGenerator) addSimilarServices(selectedChoices []string) error {
+	serviceGen := ServiceGenerator{
+		fs: g.fs,
+		cfg: &models.Service{
+			Directory:         g.cfg.Directory,
+			ProjectModuleName: g.cfg.ProjectModuleName,
+		},
+	}
+	services, err := serviceGen.SimilarChoice(selectedChoices)
+	if err != nil {
+		return fmt.Errorf("cant get similar choices as infrastructure")
+	}
+
+	serviceGen.cfg.ServiceType = services
+	if err := serviceGen.Generate(); err != nil {
+		return err
+	}
+
+  return nil
 }
 
 // addInfraFile adds infrastructure file from template

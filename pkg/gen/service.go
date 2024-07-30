@@ -26,6 +26,7 @@ func NewServiceGenerator(
 	}
 }
 
+// GetChoices gets service generation choices
 func (g *ServiceGenerator) GetChoices() ([]string, error) {
 	servicePath := filepath.Join(".", "templates", "wesionary", "service")
 	servicePath = utils.IgnoreWindowsPath(servicePath)
@@ -42,6 +43,25 @@ func (g *ServiceGenerator) GetChoices() ([]string, error) {
 	}
 
 	return choices, nil
+}
+
+// SimilarChoice get similar choices to given choice data
+func (g *ServiceGenerator) SimilarChoice(choices []string) ([]string, error) {
+	allChoices, err := g.GetChoices()
+	if err != nil {
+		return nil, err
+	}
+
+	retChoices := make([]string, 0)
+	for _, sourceChoice := range choices {
+		for _, dstChoice := range allChoices {
+			if strings.Contains(dstChoice, sourceChoice) {
+				retChoices = append(retChoices, dstChoice)
+			}
+		}
+	}
+
+	return retChoices, nil
 }
 
 func (g *ServiceGenerator) Generate() error {
