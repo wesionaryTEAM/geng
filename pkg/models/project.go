@@ -42,6 +42,10 @@ func (p *Project) AutoFill() {
 		p.PackageName = strings.Join(projSplit, "_")
 	}
 
+	if p.Directory == "" {
+		p.Directory = "./"
+	}
+
 }
 
 func (p *Project) Validate() error {

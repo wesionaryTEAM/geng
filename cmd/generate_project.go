@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/gen"
 	"github.com/mukezhz/geng/pkg/models"
+	"github.com/mukezhz/geng/templates"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +29,7 @@ func createProject(cmd *cobra.Command, args []string) {
 	// Fill up data items, if can be filled up automatically
 	input.AutoFill()
 
-	// TODO: show terminal ui if not present
+	// TODO: show terminal ui, auto fill up contents already given by flags
 
 	logger.Infof("input: %#v", input)
 
@@ -36,9 +38,9 @@ func createProject(cmd *cobra.Command, args []string) {
 		logger.Fatal("validation for input failed.", "err", err)
 	}
 
-	// projectGenerator := pkg.NewProjectGenerator()
-	// if err := projectGenerator.Generate(input); err != nil {
-	// 	logger.Fatal("project generation failed.", "err", err)
-	// }
+	generator := gen.NewProjectGenerator(input, templates.FS)
+	if err := generator.Generate(); err != nil {
+		logger.Fatal("project generation failed.", "err", err)
+	}
 
 }
