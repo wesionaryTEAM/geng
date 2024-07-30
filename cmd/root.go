@@ -23,6 +23,7 @@ func init() {
 
 	rootCmd.AddCommand(projectCmd)
 	rootCmd.AddCommand(infraCmd)
+	rootCmd.AddCommand(serviceCmd)
 }
 
 func Execute() {

@@ -15,6 +15,10 @@ func (p *Infrastructure) AutoFill() {
 }
 
 func (p *Infrastructure) Validate() error {
-	// validate input data
+  // TODO: validate input data
+  // check directory structures are properly present or not
+  // check if mod files are present in the given directory
+  // check infra choices provided matches from the available in the templates
+
 	return nil
 }
