@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -18,9 +19,9 @@ func IsDirEmpty(path string) (bool, error) {
 		return false, err
 	}
 
-  if !info.IsDir() {
-    return false, fmt.Errorf("path is not a directory")
-  }
+	if !info.IsDir() {
+		return false, fmt.Errorf("path is not a directory")
+	}
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -39,4 +40,19 @@ func IsDirEmpty(path string) (bool, error) {
 	}
 
 	return false, err
+}
+
+// ListEmbDir lists embedded file system directory
+func ListEmbDir(f embed.FS, path string) ([]string, error) {
+	op := []string{}
+	files, err := f.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		op = append(op, file.Name())
+	}
+
+	return op, nil
 }

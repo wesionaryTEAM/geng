@@ -52,14 +52,14 @@ func GenerateFiles(templatesFS embed.FS, templatePath string, targetRoot string,
 
 		generatedFiles = append(generatedFiles, dst)
 
-		return execTemplate(templatesFS, path, dst, data)
+		return ExecTemplate(templatesFS, path, dst, data)
 	})
 
 	return generatedFiles, err
 }
 
-// execTemplate executes the template at destination directory
-func execTemplate(f embed.FS, path, dst string, data interface{}) (err error) {
+// ExecTemplate executes the template at destination directory, saved items in dst
+func ExecTemplate(f embed.FS, path, dst string, data interface{}) (err error) {
 	tmpl, err := template.ParseFS(f, path)
 	if err != nil {
 		return fmt.Errorf("parsing template error. %w", err)
