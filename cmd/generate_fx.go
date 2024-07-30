@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var generateFxCmd = &cobra.Command{
+var fxCmd = &cobra.Command{
 	Use:   "fx",
 	Short: "Generate the fx configuration file for the project",
 	Long: `

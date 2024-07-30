@@ -24,7 +24,8 @@ func init() {
 	rootCmd.AddCommand(projectCmd)
 	rootCmd.AddCommand(infraCmd)
 	rootCmd.AddCommand(serviceCmd)
-	rootCmd.AddCommand(generateFxCmd)
+	rootCmd.AddCommand(fxCmd)
+	rootCmd.AddCommand(seedProjectCmd)
 }
 
 func Execute() {
