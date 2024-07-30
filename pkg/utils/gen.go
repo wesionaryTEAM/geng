@@ -3,11 +3,11 @@ package utils
 import (
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 // GenerateFiles walks the template directory and runs template engine against passed data
