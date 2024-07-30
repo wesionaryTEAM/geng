@@ -55,6 +55,10 @@ func SetFlags(cmd *cobra.Command, items []FlagItem) {
 // BindFlag binds the flag to the viper
 func BindFlag(cmd *cobra.Command, items []FlagItem) {
 	for _, i := range items {
-		viper.BindPFlag(i.Name, cmd.Flags().Lookup(i.Name))
+		f := cmd.Flags()
+		if i.Persistent {
+			f = cmd.PersistentFlags()
+		}
+		viper.BindPFlag(i.Name, f.Lookup(i.Name))
 	}
 }
