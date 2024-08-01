@@ -5,9 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var seedProjectCmd = &cobra.Command{
-	Use:   "seed",
-	Short: "Seed the project",
+var runSeedCmd = &cobra.Command{
+	Use:   "run:seed",
+	Short: "Run the Seed command",
 	Run:   seedProject,
 }
 
