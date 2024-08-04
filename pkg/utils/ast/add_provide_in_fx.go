@@ -1,8 +1,7 @@
-package utils
+package gengast
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -10,32 +9,6 @@ import (
 	"go/token"
 	"strings"
 )
-
-// GetFunctionDeclarations gets all the function declarations present in a go file present in embed
-func GetFunctionDeclarations(fs embed.FS, path string) ([]string, error) {
-	fset := token.NewFileSet()
-	f, err := fs.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	node, err := parser.ParseFile(fset, "", f, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
-	var functions []string
-	ast.Inspect(node, func(n ast.Node) bool {
-		switch x := n.(type) {
-		case *ast.FuncDecl:
-			functions = append(functions, x.Name.Name)
-		}
-		return true
-	})
-
-	return functions, nil
-}
-
 
 // AddListOfProvideInFxOptions adds provide in fx.Options list in path
 func AddListOfProvideInFxOptions(path string, providerList []string) (string, error) {

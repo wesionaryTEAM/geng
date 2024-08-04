@@ -9,6 +9,7 @@ import (
 	"github.com/mukezhz/geng/pkg"
 	"github.com/mukezhz/geng/pkg/models"
 	"github.com/mukezhz/geng/pkg/utils"
+	gengast "github.com/mukezhz/geng/pkg/utils/ast"
 )
 
 type InfraGenerator struct {
@@ -82,9 +83,9 @@ func (g *InfraGenerator) Generate() error {
 
 	logger.Infof("updated infrastructure in %s", g.cfg.Directory)
 
-  if err := g.addSimilarServices(selectedChoices); err != nil {
-    return err
-  }
+	if err := g.addSimilarServices(selectedChoices); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -107,7 +108,7 @@ func (g *InfraGenerator) addSimilarServices(selectedChoices []string) error {
 		return err
 	}
 
-  return nil
+	return nil
 }
 
 // addInfraFile adds infrastructure file from template
@@ -134,14 +135,14 @@ func (g *InfraGenerator) updateProviders(modPath string, selectedChoices []strin
 		funcPath := filepath.Join(".", "templates", "wesionary", "infrastructure", choice+".tmpl")
 		funcPath = utils.IgnoreWindowsPath(funcPath)
 
-		funcDecl, err := utils.GetFunctionDeclarations(g.fs, funcPath)
+		funcDecl, err := gengast.GetFunctionDeclarations(g.fs, funcPath)
 		if err != nil {
 			return fmt.Errorf("error generating function declarations, path: %s, err: %w", funcPath, err)
 		}
 		functions = append(functions, funcDecl...)
 	}
 
-	providerCode, err := utils.AddListOfProvideInFxOptions(modPath, functions)
+	providerCode, err := gengast.AddListOfProvideInFxOptions(modPath, functions)
 	if err != nil {
 		return fmt.Errorf("error generating providers list. %w", err)
 	}

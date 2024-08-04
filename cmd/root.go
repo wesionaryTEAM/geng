@@ -28,7 +28,8 @@ func init() {
 	rootCmd.AddCommand(runSeedCmd)
 	rootCmd.AddCommand(runProjectCmd)
 	rootCmd.AddCommand(runMigrateCmd)
-  rootCmd.AddCommand(runStartCmd)
+	rootCmd.AddCommand(runStartCmd)
+	rootCmd.AddCommand(moduleCmd)
 }
 
 func Execute() {
