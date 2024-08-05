@@ -1,5 +1,15 @@
 package models
 
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/utils"
+
+	"github.com/mukezhz/geng/templates"
+)
+
 type Infrastructure struct {
 	Directory         string `mapstructure:"dir"`
 	ProjectModuleName string `mapstructure:"mod"`
@@ -12,13 +22,48 @@ func (p *Infrastructure) AutoFill() {
 	if p.Directory == "" {
 		p.Directory = "./" + p.ProjectModuleName
 	}
+	logger := pkg.GetLogger()
+	goModPath, err := utils.FindPathFromFile(p.Directory, "go.mod")
+	if err != nil {
+		logger.Fatal("go.mod file not found", "err", err)
+	}
+	p.Directory = goModPath
+	goMod, err := GetModuleNameFromGoModFile(goModPath)
+	if err != nil {
+		logger.Fatal("couldn't get module name from go.mod", "err", err)
+	}
+	p.ProjectModuleName = goMod.Module
 }
 
 func (p *Infrastructure) Validate() error {
-  // TODO: validate input data
-  // check directory structures are properly present or not
-  // check if mod files are present in the given directory
-  // check infra choices provided matches from the available in the templates
+
+	if len(p.InfraType) == 0 {
+		return nil
+	}
+
+	logger := pkg.GetLogger()
+
+	// check directory structures are properly present or not
+	pathToInfra := utils.IgnoreWindowsPath(filepath.Join(".", "templates", "wesionary", "infrastructure"))
+	files, err := utils.ListEmbDir(templates.FS, pathToInfra)
+	if err != nil {
+		logger.Fatal("couldn't list infrastructure directories", "err", err)
+	}
+	filesWithoutExt := utils.GetFileWithoutExt(files)
+
+	// check infra choices provided matches from the available in the templates
+	for _, file := range p.InfraType {
+		if exists := utils.StrInList(
+			filesWithoutExt,
+			strings.ToLower(strings.TrimSpace(file))); !exists {
+			logger.Fatalf("infrastructure type not found for type: %s", file)
+		}
+	}
+
+	// check if mod files are present in the given directory
+	if _, err := utils.FindPathFromFile(p.Directory, "go.mod"); err != nil {
+		logger.Fatal("go.mod file not found", "err", err)
+	}
 
 	return nil
 }
