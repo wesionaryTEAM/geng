@@ -46,12 +46,7 @@ func createProject(cmd *cobra.Command, args []string) {
 		logger.Fatal("validation for input failed.", "err", err)
 	}
 
-	generator := gen.NewProjectGenerator(input, templates.FS)
-	if err := generator.Generate(); err != nil {
-		logger.Fatal("project generation failed.", "err", err)
-	}
-
-  // generate infrastructure after project has been generated 
+	// generate infrastructure after project has been generated
 	infraInput := pkg.GetConfig[models.Infrastructure]()
 	infraInput.ProjectModuleName = input.ProjectModuleName
 	infraInput.Directory = input.Directory
@@ -63,6 +58,13 @@ func createProject(cmd *cobra.Command, args []string) {
 		logger.Fatal("validation for input failed.", "err", err)
 	}
 
+	// generate project
+	generator := gen.NewProjectGenerator(input, templates.FS)
+	if err := generator.Generate(); err != nil {
+		logger.Fatal("project generation failed.", "err", err)
+	}
+
+	// generate infrastructure
 	infraGenerator := gen.NewInfraGenerator(infraInput, templates.FS)
 	if err := infraGenerator.Generate(); err != nil {
 		logger.Fatal("infrastructure generation failed.", "err", err)
