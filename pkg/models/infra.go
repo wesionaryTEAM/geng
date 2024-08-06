@@ -21,27 +21,27 @@ type Infrastructure struct {
 func (p *Infrastructure) AutoFill() {
 	logger := pkg.GetLogger()
 
-	// if directory is not provided, then fill it up with project name
 	if p.Directory != "" {
 		return
-	} else {
-		if p.Directory == "" {
-			p.Directory = "./" + p.ProjectModuleName
-		}
-		goModPath := getGoModPath(p.Directory, logger)
-		p.Directory = goModPath
 	}
 
-	// if project module name is not provided, then fill it up from go.mod file
+	// if directory is not provided, then fill it up with project name
+	if p.Directory == "" {
+		p.Directory = "./" + p.ProjectModuleName
+	}
+	goModPath := getGoModPath(p.Directory, logger)
+	p.Directory = goModPath
+
 	if p.ProjectModuleName != "" {
 		return
-	} else {
-		goMod, err := GetModuleNameFromGoModFile(p.Directory)
-		if err != nil {
-			logger.Fatal("couldn't get module name from go.mod", "err", err)
-		}
-		p.ProjectModuleName = goMod.Module
 	}
+	// if project module name is not provided, then fill it up from go.mod file
+	goMod, err := GetModuleNameFromGoModFile(p.Directory)
+	if err != nil {
+		logger.Fatal("couldn't get module name from go.mod", "err", err)
+	}
+	p.ProjectModuleName = goMod.Module
+
 }
 
 func getGoModPath(directory string, logger *pkg.GengLogger) string {
