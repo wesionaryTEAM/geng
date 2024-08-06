@@ -19,20 +19,37 @@ type Infrastructure struct {
 
 // Fill fills up some empty data from project name if possible to do so
 func (p *Infrastructure) AutoFill() {
-	if p.Directory == "" {
-		p.Directory = "./" + p.ProjectModuleName
-	}
 	logger := pkg.GetLogger()
-	goModPath, err := utils.FindPathFromFile(p.Directory, "go.mod")
+
+	// if directory is not provided, then fill it up with project name
+	if p.Directory != "" {
+		return
+	} else {
+		if p.Directory == "" {
+			p.Directory = "./" + p.ProjectModuleName
+		}
+		goModPath := getGoModPath(p.Directory, logger)
+		p.Directory = goModPath
+	}
+
+	// if project module name is not provided, then fill it up from go.mod file
+	if p.ProjectModuleName != "" {
+		return
+	} else {
+		goMod, err := GetModuleNameFromGoModFile(p.Directory)
+		if err != nil {
+			logger.Fatal("couldn't get module name from go.mod", "err", err)
+		}
+		p.ProjectModuleName = goMod.Module
+	}
+}
+
+func getGoModPath(directory string, logger *pkg.GengLogger) string {
+	goModPath, err := utils.FindPathFromFile(directory, "go.mod")
 	if err != nil {
 		logger.Fatal("go.mod file not found", "err", err)
 	}
-	p.Directory = goModPath
-	goMod, err := GetModuleNameFromGoModFile(goModPath)
-	if err != nil {
-		logger.Fatal("couldn't get module name from go.mod", "err", err)
-	}
-	p.ProjectModuleName = goMod.Module
+	return goModPath
 }
 
 func (p *Infrastructure) Validate() error {
