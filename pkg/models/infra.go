@@ -21,10 +21,6 @@ type Infrastructure struct {
 func (p *Infrastructure) AutoFill() {
 	logger := pkg.GetLogger()
 
-	if p.Directory != "" {
-		return
-	}
-
 	// if directory is not provided, then fill it up with project name
 	if p.Directory == "" {
 		p.Directory = "./" + p.ProjectModuleName
