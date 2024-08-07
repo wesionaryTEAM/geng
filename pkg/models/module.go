@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mukezhz/geng/pkg"
 	"github.com/mukezhz/geng/pkg/utils"
 	gengast "github.com/mukezhz/geng/pkg/utils/ast"
 )
@@ -23,15 +24,23 @@ type Module struct {
 	ModuleName string
 }
 
-func (m *Module) AutoFill() error {
+func (m *Module) AutoFill() {
+
+	logger := pkg.GetLogger()
+
 	if m.Directory == "" {
 		m.Directory = "./" // current directory
-		// TODO: automatically get directory from git root
+	}
+	goModPath := getGoModPath(m.Directory, logger)
+	m.Directory = goModPath
+
+	if m.ProjectModuleName != "" {
+		return
 	}
 
 	modName, err := gengast.GetModuleNameFromGoModFile(m.Directory)
 	if err != nil {
-		return fmt.Errorf("autofill error, %w", err)
+		logger.Fatal("couldn't get module name from go.mod", "err", err)
 	}
 
 	m.ProjectModuleName = modName
@@ -39,8 +48,6 @@ func (m *Module) AutoFill() error {
 	if len(m.PackageName) > 1 {
 		m.ModuleName = strings.ToUpper(m.PackageName[0:1]) + m.PackageName[1:]
 	}
-
-	return nil
 }
 
 func (m *Module) Validate() error {
@@ -55,6 +62,10 @@ func (m *Module) Validate() error {
 
 	if !gengast.IsModNameValid(m.PackageName) {
 		return fmt.Errorf("module name is invalid")
+	}
+	// check if domain directory exists [project is not initialized]
+	if ok, err := utils.IsDirEmpty(filepath.Join(m.Directory, "domain")); ok && err == nil {
+		return fmt.Errorf("project is not initialized")
 	}
 
 	// check if module already exists in the directory

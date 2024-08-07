@@ -29,9 +29,7 @@ func createModule(cmd *cobra.Command, args []string) {
 	logger := pkg.GetLogger()
 	input := pkg.GetConfig[models.Module]()
 
-	if err := input.AutoFill(); err != nil {
-		logger.Fatal(err)
-	}
+	input.AutoFill()
 
 	if err := input.Validate(); err != nil {
 		logger.Fatal(err)
