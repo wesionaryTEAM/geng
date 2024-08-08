@@ -1,10 +1,11 @@
-package utility
+package utils
 
 import (
 	"os"
 	"os/exec"
 )
 
+// ExecuteCommand executes a command
 func ExecuteCommand(program string, commands []string, args ...string) error {
 	var cmd *exec.Cmd
 	runCommand := commands

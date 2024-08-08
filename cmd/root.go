@@ -1,26 +1,43 @@
 package cmd
 
 import (
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-// Root is the root of the command execution.
-// root can be thought of as a main program.
-var Root = &cobra.Command{
+var rootCmd = &cobra.Command{
 	Use:   "geng",
-	Short: "A generator for Cobra based Applications",
-	Long:  `geng is a CLI library for Go that empowers applications.`,
+	Short: "A golang project and module generator cli tool",
+	Long:  "geng is a CLI tool for golang api project generation.",
+}
+
+var rootFlags = []utils.FlagItem{
+	{Name: "dir", Short: "d", Desc: "target directory for geng", Persistent: true},
+	{Name: "goversion", Short: "v", Desc: "golang version in mod file", Persistent: true},
 }
 
 func init() {
-	Root.AddCommand(
-		newModuleCmd,
-		projectCmd,
-		runProjectCmd,
-		infraCmd,
-		serviceCmd,
-		seedProjectCmd,
-		startProjectCmd,
-		migrationProjectCmd,
-	)
+	utils.SetFlags(rootCmd, rootFlags)
+	utils.BindFlag(rootCmd, rootFlags)
+
+	rootCmd.AddCommand(projectCmd)
+	rootCmd.AddCommand(infraCmd)
+	rootCmd.AddCommand(serviceCmd)
+	rootCmd.AddCommand(fxCmd)
+	rootCmd.AddCommand(runSeedCmd)
+	rootCmd.AddCommand(runProjectCmd)
+	rootCmd.AddCommand(runMigrateCmd)
+	rootCmd.AddCommand(runStartCmd)
+	rootCmd.AddCommand(moduleCmd)
+}
+
+func Execute() {
+	logger := pkg.GetLogger()
+
+	pkg.PrintIntro()
+
+	if err := rootCmd.Execute(); err != nil {
+		logger.Fatal("couldn't execute the necessary command", "err", err)
+	}
 }

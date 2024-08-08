@@ -1,117 +1,155 @@
 package gen
 
 import (
-	"errors"
+	"embed"
+	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/mukezhz/geng/pkg/model"
-	"github.com/mukezhz/geng/pkg/utility"
-	"github.com/mukezhz/geng/templates"
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/models"
+	"github.com/mukezhz/geng/pkg/utils"
+	gengast "github.com/mukezhz/geng/pkg/utils/ast"
 )
 
 type ServiceGenerator struct {
-	Directory string
-
-	modPath   string
-	infraPath string
-
-	choice *ServiceChoice
+	cfg *models.Service
+	fs  embed.FS
 }
 
-type ServiceChoice struct {
-	Items     []string
-	Templates []string
+func NewServiceGenerator(
+	cfg *models.Service,
+	fs embed.FS,
+) *ServiceGenerator {
+	return &ServiceGenerator{
+		cfg: cfg,
+		fs:  fs,
+	}
 }
 
-// GetSelectedItems converts selected items (integer) from template into
-// array of strings depending on the choices generated.
-func (i *ServiceGenerator) GetSelectedItems(selectedItems []int) []string {
-	retItem := make([]string, len(selectedItems))
-	items := i.GetChoices().Items
-	for i, selectedIndex := range selectedItems {
-		retItem[i] = items[selectedIndex]
+// GetChoices gets service generation choices
+func (g *ServiceGenerator) GetChoices() ([]string, error) {
+	servicePath := filepath.Join(".", "templates", "wesionary", "service")
+	servicePath = utils.IgnoreWindowsPath(servicePath)
+
+	temps, err := utils.ListEmbDir(g.fs, servicePath)
+	if err != nil {
+		return nil, err
 	}
 
-	return retItem
-}
-
-func (s *ServiceGenerator) GetChoices() *ServiceChoice {
-	s.modPath = filepath.Join(s.Directory, "pkg", "services", "module.go")
-	s.infraPath = utility.IgnoreWindowsPath(filepath.Join(".", "templates", "wesionary", "service"))
-	templates := utility.ListDirectory(templates.FS, s.infraPath)
-
-	replaceFunc := func(q string) string {
-		return strings.Replace(q, ".tmpl", "", 1)
+	choices := make([]string, 0)
+	for _, temp := range temps {
+		choice := strings.Replace(temp, ".tmpl", "", 1)
+		choices = append(choices, choice)
 	}
 
-	services := utility.Map[string, string](templates, replaceFunc)
-
-	s.choice = &ServiceChoice{
-		Items:     services,
-		Templates: templates,
-	}
-
-	return s.choice
+	return choices, nil
 }
 
-// SimilarChoice gives similar choice to passed values from templates.
-// simple strings.Contain operation is carried out.
-func (s *ServiceGenerator) SimilarChoice(shouldMatch []string) []int {
-	var matches []int
-	choices := s.GetChoices()
+// SimilarChoice get similar choices to given choice data
+func (g *ServiceGenerator) SimilarChoice(choices []string) ([]string, error) {
+	allChoices, err := g.GetChoices()
+	if err != nil {
+		return nil, err
+	}
 
-	for _, m := range shouldMatch {
-		for i, item := range choices.Items {
-      // similarity check for now
-			if strings.Contains(item, m) {
-				matches = append(matches, i)
+	retChoices := make([]string, 0)
+	for _, sourceChoice := range choices {
+		for _, dstChoice := range allChoices {
+			if strings.Contains(dstChoice, sourceChoice) {
+				retChoices = append(retChoices, dstChoice)
 			}
 		}
 	}
 
-	return matches
+	return retChoices, nil
 }
 
-func (s *ServiceGenerator) Generate(
-	data model.ModuleData,
-	selectedItems []int,
-) error {
+func (g *ServiceGenerator) Generate() error {
+	logger := pkg.GetLogger()
 
-	s.GetChoices()
+	modPath := filepath.Join(g.cfg.Directory, "pkg", "services", "module.go")
 
-	if len(s.choice.Items) == 0 {
-		return errors.New("no choice to choose from, templates mismatch")
+	if len(g.cfg.ServiceType) == 0 {
+		return nil
 	}
 
-	if len(selectedItems) == 0 {
-		return errors.New("noting choosen by the user, skipping")
+	choices, err := g.GetChoices()
+	if err != nil {
+		return fmt.Errorf("cant get service choices, %w", err)
 	}
 
-	var functions []string
-	for _, index := range selectedItems {
-		funcPath := utility.IgnoreWindowsPath(filepath.Join(".", "templates", "wesionary", "service", s.choice.Templates[index]))
-		funcs := utility.GetFunctionDeclarations(funcPath, templates.FS)
-
-		filterFunc := func(q string) bool {
-			return strings.Contains(q, "New")
+	selectedChoices := make([]string, 0)
+	for _, c := range g.cfg.ServiceType {
+		if utils.StrInList(choices, c) {
+			selectedChoices = append(selectedChoices, c)
+		} else {
+			logger.Warnf("skipping invalid choice: %s", c)
 		}
-		filteredServices := utility.Filter[string](funcs, filterFunc)
-
-		functions = append(functions, filteredServices...)
 	}
 
-	updatedCode := utility.AddListOfProvideInFxOptions(s.modPath, functions)
-	utility.WriteContentToPath(s.modPath, updatedCode)
+	logger.Infof("generating service, choices: %#v", selectedChoices)
 
-	for _, item := range selectedItems {
-		currTemplate := s.choice.Templates[item]
-		templatePath := filepath.Join(".", "templates", "wesionary", "service", currTemplate)
-		templatePath = utility.IgnoreWindowsPath(templatePath)
+	if err := g.updateProviders(modPath, selectedChoices); err != nil {
+		return err
+	}
 
-		targetRoot := filepath.Join(data.Directory, "pkg", "services", strings.Replace(currTemplate, ".tmpl", ".go", 1))
+	if err := g.addServiceFile(selectedChoices); err != nil {
+		return err
+	}
 
-		utility.GenerateFromEmbeddedTemplate(templates.FS, templatePath, targetRoot, data)
+	logger.Infof("updated service in %s", g.cfg.Directory)
+
+	return nil
+}
+
+// addInfraFile adds service file from template
+func (g *ServiceGenerator) addServiceFile(selectedChoices []string) error {
+	for _, choice := range selectedChoices {
+		sourcePath := filepath.Join(".", "templates", "wesionary", "service", choice+".tmpl")
+		sourcePath = utils.IgnoreWindowsPath(sourcePath)
+
+		destPath := filepath.Join(g.cfg.Directory, "pkg", "services", choice+".go")
+
+		err := utils.ExecTemplate(g.fs, sourcePath, destPath, g.cfg)
+		if err != nil {
+			return fmt.Errorf("error generating file from template. %w", err)
+		}
+	}
+
+	return nil
+}
+
+// updateProviders generate function declarations for selected services and update providers
+func (g *ServiceGenerator) updateProviders(modPath string, selectedChoices []string) error {
+	var functions []string
+	for _, choice := range selectedChoices {
+		funcPath := filepath.Join(".", "templates", "wesionary", "service", choice+".tmpl")
+		funcPath = utils.IgnoreWindowsPath(funcPath)
+
+		funcDecl, err := gengast.GetFunctionDeclarations(g.fs, funcPath)
+		if err != nil {
+			return fmt.Errorf("error generating function declarations, path: %s, err: %w", funcPath, err)
+		}
+
+		// get only those declarations with new
+		decl := make([]string, 0)
+		for _, d := range funcDecl {
+			if strings.Contains(d, "New") {
+				decl = append(decl, d)
+			}
+		}
+
+		functions = append(functions, decl...)
+	}
+
+	providerCode, err := gengast.AddListOfProvideInFxOptions(modPath, functions)
+	if err != nil {
+		return fmt.Errorf("error generating providers list. %w", err)
+	}
+
+	if err := utils.WriteToPath(modPath, providerCode); err != nil {
+		return fmt.Errorf("couldn't write to: %s, err: %w", modPath, err)
 	}
 
 	return nil

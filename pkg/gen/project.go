@@ -1,88 +1,44 @@
 package gen
 
 import (
-	"errors"
-	"fmt"
+	"embed"
 	"path/filepath"
 
-	"github.com/mukezhz/geng/pkg/constant"
-	"github.com/mukezhz/geng/pkg/utility"
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/models"
+	"github.com/mukezhz/geng/pkg/utils"
 	"github.com/mukezhz/geng/templates"
 )
 
-// ProjectGenerator is argument for project generator
 type ProjectGenerator struct {
-	Name        string
-	ModuleName  string
-	Description string
-	Author      string
-	Directory   string
-	GoVersion   string
-
-	Infra *InfraGenerator
+	cfg *models.Project
+	fs  embed.FS
 }
 
-// Fill fills up items from map to the struct
-func (p *ProjectGenerator) Fill(d map[string]string) {
-	p.Name, _ = d[constant.ProjectNameKEY]
-	p.ModuleName, _ = d[constant.ProjectModuleNameKEY]
-	p.Author, _ = d[constant.AuthorKEY]
-	p.Description, _ = d[constant.ProjectDescriptionKEY]
-	p.GoVersion, _ = d[constant.GoVersionKEY]
-	p.Directory, _ = d[constant.DirectoryKEY]
-
-	p.Infra = &InfraGenerator{
-		Directory: p.Directory,
+func NewProjectGenerator(cfg *models.Project, fs embed.FS) *ProjectGenerator {
+	return &ProjectGenerator{
+		cfg: cfg,
+		fs:  templates.FS,
 	}
 }
 
-// Validate validates generated project arguments
-func (p *ProjectGenerator) Validate() error {
-	p.GoVersion = utility.CheckVersion(p.GoVersion)
-	if p.Name == "" {
-		return errors.New("Error: project name is required")
-	}
-	if p.ModuleName == "" {
-		return errors.New("Error: golang module name is required")
-	}
-	return nil
-}
+func (g *ProjectGenerator) Generate() error {
 
-// Generate genrates the project given the arguments in the struct
-func (p *ProjectGenerator) Generate(selectedInfra []int) error {
-	data := utility.GetModuleDataFromModuleName(p.Name, p.ModuleName, p.GoVersion)
-	data.ProjectDescription = p.Description
-	data.Author = p.Author
+	tempPath := filepath.Join("templates", "wesionary", "project")
+	tempPath = utils.IgnoreWindowsPath(tempPath)
 
-	data.Directory = p.Directory
-	if data.Directory == "" {
-		data.Directory = filepath.Join(data.Directory, data.PackageName)
-	}
-
-	p.Infra.Directory = data.Directory
-
-	templatePath := utility.IgnoreWindowsPath(filepath.Join("templates", "wesionary", "project"))
-	err := utility.GenerateFiles(templates.FS, templatePath, p.Infra.Directory, data)
+	generatedFiles, err := utils.GenerateFiles(g.fs, tempPath, g.cfg.Directory, g.cfg)
 	if err != nil {
-		return fmt.Errorf("Error generating file: %v", err)
-	}
-
-	utility.PrintColorizeProjectDetail(data)
-	fmt.Println("")
-
-	if err := p.Infra.Validate(); err != nil {
 		return err
 	}
 
-	if len(selectedInfra) == 0 {
-		return errors.New("No infrastructure selected")
+	logger := pkg.GetLogger()
+	logger.Info("project generation success")
+	logger.Infof("generated %d files", len(generatedFiles))
+
+	if err := utils.ModTidy(g.cfg.Directory); err != nil {
+		return err
 	}
 
-	selectedInfras := p.Infra.GetSelectedItems(selectedInfra)
-	if err := p.Infra.Generate(data, selectedInfra); err != nil {
-		return fmt.Errorf("Generation error: %v\n", err)
-	}
-
-	utility.PrintColorizeInfrastructureDetail(data, selectedInfras)
 	return nil
 }

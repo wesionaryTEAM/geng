@@ -1,4 +1,4 @@
-package utility
+package gen
 
 import (
 	"fmt"
@@ -10,49 +10,72 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/models"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
-func GenerateFxModule() {
+type FxGenerator struct {
+	cfg *models.Fx
+}
+
+func NewFxGenerator(cfg *models.Fx) *FxGenerator {
+	return &FxGenerator{
+		cfg: cfg,
+	}
+}
+
+func (g *FxGenerator) Generate() error {
 	fset := token.NewFileSet()
-	root := "./"
+	root := g.cfg.Directory
+
 	moduleMap := make(map[string][]string)
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+
 		if err != nil {
 			return err
 		}
+
 		if info.IsDir() {
 			return nil
 		}
+
 		if !strings.HasSuffix(info.Name(), ".go") {
 			return nil
 		}
 
 		file, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse file %s: %v\n", path, err)
-			return err
+			return fmt.Errorf("failed to parse file %s, %w", path, err)
 		}
 
-		processedFile := processFile(file)
+		processedFile := g.processFile(file)
 		if len(processedFile) != 0 {
 			moduleMap[filepath.Dir(path)] = append(moduleMap[filepath.Dir(path)], processedFile...)
 		}
 
 		return nil
 	})
-	generateFile(moduleMap)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error walking through the directory: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error walking through directory. %w", err)
 	}
+
+	count, err := g.generateFile(moduleMap)
+	if err != nil {
+		return fmt.Errorf("error generating modules. %w", err)
+	}
+
+	pkg.GetLogger().Infof("generated %d module files", count)
+
+	return nil
 }
 
-func processFile(file *ast.File) []string {
+func (g *FxGenerator) processFile(file *ast.File) []string {
 	providers := make([]string, 0)
+
 	ast.Inspect(file, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
 		if !ok || fn.Doc == nil {
@@ -82,15 +105,10 @@ func processFile(file *ast.File) []string {
 			}
 		}
 		return true
-	})
-	return providers
-}
 
-type Module struct {
-	PackageName string
-	ModuleName  string
-	Name        string
-	Providers   []string
+	})
+
+	return providers
 }
 
 const templateText = `package {{.PackageName}}
@@ -108,31 +126,33 @@ var {{.ModuleName}} = fx.Module("{{.Name}}",
 )
 `
 
-func generateFile(dependencies map[string][]string) {
+func (g *FxGenerator) generateFile(deps map[string][]string) (int, error) {
 	tmpl, err := template.New("module").Parse(templateText)
 	if err != nil {
-		panic(err)
+		return 0, fmt.Errorf("error parsing template. %w", err)
 	}
 
-	for k, v := range dependencies {
-		module := Module{
-			PackageName: filepath.Base(k),
-			Name:        filepath.Base(k),
-			ModuleName:  cases.Title(language.English).String(filepath.Base(k)),
-			Providers:   v,
+	for k, v := range deps {
+		module := map[string]interface{}{
+			"PackageName": filepath.Base(k),
+			"Name":        filepath.Base(k),
+			"ModuleName":  cases.Title(language.English).String(filepath.Base(k)),
+			"Providers":   v,
 		}
+
 		filePath := filepath.Join(k, "module.go")
 		file, err := os.Create(filePath)
 		if err != nil {
-			panic(err)
+			return 0, fmt.Errorf("cannot create file. path: %s ,err: %w", filePath, err)
 		}
+
 		defer file.Close()
 
 		err = tmpl.Execute(file, module)
 		if err != nil {
-			panic(err)
+			return 0, fmt.Errorf("error executing template. err: %w", err)
 		}
 	}
-	count := len(dependencies)
-	fmt.Printf("Generated %d module files\n", count)
+
+	return len(deps), nil
 }

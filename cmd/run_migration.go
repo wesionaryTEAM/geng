@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"github.com/mukezhz/geng/pkg/utility"
+	"github.com/mukezhz/geng/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var migrationProjectCmd = &cobra.Command{
-	Use:   "migrate [project name]",
-	Short: "migrate the project",
+var runMigrateCmd = &cobra.Command{
+	Use:   "run:migrate",
+	Short: "run the migrate command",
 	Args:  cobra.MaximumNArgs(0),
 	Run:   migrationProject,
 }
@@ -15,8 +15,9 @@ var migrationProjectCmd = &cobra.Command{
 func migrationProject(_ *cobra.Command, args []string) {
 	program := "go"
 	commands := []string{"run", "main.go", "migrate:run"}
+
 	// execute command from golang
-	err := utility.ExecuteCommand(program, commands, args...)
+	err := utils.ExecuteCommand(program, commands, args...)
 	if err != nil {
 		return
 	}

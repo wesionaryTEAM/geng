@@ -1,119 +1,154 @@
 package gen
 
 import (
-	"errors"
+	"embed"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/mukezhz/geng/pkg/model"
-	"github.com/mukezhz/geng/pkg/utility"
-	"github.com/mukezhz/geng/templates"
+	"github.com/mukezhz/geng/pkg"
+	"github.com/mukezhz/geng/pkg/models"
+	"github.com/mukezhz/geng/pkg/utils"
+	gengast "github.com/mukezhz/geng/pkg/utils/ast"
 )
 
 type InfraGenerator struct {
-	Directory string
-
-	modPath   string
-	infraPath string
-
-	choice *InfraChoice
-
-	Service *ServiceGenerator
+	cfg *models.Infrastructure
+	fs  embed.FS
 }
 
-type InfraChoice struct {
-	Items     []string
-	Templates []string
+func NewInfraGenerator(
+	cfg *models.Infrastructure,
+	fs embed.FS,
+) *InfraGenerator {
+	return &InfraGenerator{
+		cfg: cfg,
+		fs:  fs,
+	}
 }
 
-// GetChoices generates necessary choices for infrastructure selection
-// the generated choices are filled up in the generator struct automatically.
-// returns the available choices as per the templates available.
-func (i *InfraGenerator) GetChoices() *InfraChoice {
-	i.modPath = filepath.Join(i.Directory, "pkg", "infrastructure", "module.go")
-	i.infraPath = utility.IgnoreWindowsPath(filepath.Join(".", "templates", "wesionary", "infrastructure"))
+func (g *InfraGenerator) GetChoices() ([]string, error) {
+	infraPath := filepath.Join(".", "templates", "wesionary", "infrastructure")
+	infraPath = utils.IgnoreWindowsPath(infraPath)
 
-	templates := utility.ListDirectory(templates.FS, i.infraPath)
-
-	replaceFunc := func(q string) string {
-		return strings.Replace(q, ".tmpl", "", 1)
+	temps, err := utils.ListEmbDir(g.fs, infraPath)
+	if err != nil {
+		return nil, err
 	}
 
-	items := utility.Map[string, string](templates, replaceFunc)
-	i.choice = &InfraChoice{
-		Items:     items,
-		Templates: templates,
+	choices := make([]string, 0)
+	for _, temp := range temps {
+		choice := strings.Replace(temp, ".tmpl", "", 1)
+		choices = append(choices, choice)
 	}
 
-	i.Service = &ServiceGenerator{Directory: i.Directory}
-
-	return i.choice
+	return choices, nil
 }
 
-// GetSelectedItems converts selected items (integer) from template into
-// array of strings depending on the choices generated.
-func (i *InfraGenerator) GetSelectedItems(selectedItems []int) []string {
-	retItem := make([]string, len(selectedItems))
-	items := i.GetChoices().Items
-	for i, selectedIndex := range selectedItems {
-		retItem[i] = items[selectedIndex]
+func (g *InfraGenerator) Generate() error {
+	logger := pkg.GetLogger()
+
+	modPath := filepath.Join(g.cfg.Directory, "pkg", "infrastructure", "module.go")
+
+	infraPath := filepath.Join(".", "templates", "wesionary", "infrastructure")
+	infraPath = utils.IgnoreWindowsPath(infraPath)
+
+	if len(g.cfg.InfraType) == 0 {
+		return nil
 	}
 
-	return retItem
-}
+	choices, err := g.GetChoices()
+	if err != nil {
+		return fmt.Errorf("cant get infra choices, %w", err)
+	}
 
-func (i *InfraGenerator) Validate() error {
-	if i.Directory == "" {
-		return errors.New("InfraGenerator: directory argument is empty")
+	selectedChoices := make([]string, 0)
+	for _, c := range g.cfg.InfraType {
+		if utils.StrInList(choices, c) {
+			selectedChoices = append(selectedChoices, c)
+		} else {
+			logger.Warnf("skipping invalid choice: %s", c)
+		}
+	}
+
+	logger.Infof("generating infra, choices: %#v", selectedChoices)
+
+	if err := g.updateProviders(modPath, selectedChoices); err != nil {
+		return err
+	}
+
+	if err := g.addInfraFile(selectedChoices); err != nil {
+		return err
+	}
+
+	logger.Infof("updated infrastructure in %s", g.cfg.Directory)
+
+	if err := g.addSimilarServices(selectedChoices); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// TODO: remove dependencies on model, items and functions
-func (g *InfraGenerator) Generate(
-	data model.ModuleData,
-	selectedItems []int, // selected items for generation
-) error {
-
-	g.GetChoices()
-
-	if len(g.choice.Items) == 0 {
-		return errors.New("no choice to choose from, templates mismatch")
+func (g *InfraGenerator) addSimilarServices(selectedChoices []string) error {
+	serviceGen := ServiceGenerator{
+		fs: g.fs,
+		cfg: &models.Service{
+			Directory:         g.cfg.Directory,
+			ProjectModuleName: g.cfg.ProjectModuleName,
+		},
+	}
+	services, err := serviceGen.SimilarChoice(selectedChoices)
+	if err != nil {
+		return fmt.Errorf("cant get similar choices as infrastructure")
 	}
 
-	// nothing choosen by the user
-	if len(selectedItems) == 0 {
-		return errors.New("nothing choosen by the user, skipping")
+	serviceGen.cfg.ServiceType = services
+	if err := serviceGen.Generate(); err != nil {
+		return err
 	}
 
-	// generate function declarations of selected infrastructures
+	return nil
+}
+
+// addInfraFile adds infrastructure file from template
+func (g *InfraGenerator) addInfraFile(selectedChoices []string) error {
+	for _, choice := range selectedChoices {
+		sourcePath := filepath.Join(".", "templates", "wesionary", "infrastructure", choice+".tmpl")
+		sourcePath = utils.IgnoreWindowsPath(sourcePath)
+
+		destPath := filepath.Join(g.cfg.Directory, "pkg", "infrastructure", choice+".go")
+
+		err := utils.ExecTemplate(g.fs, sourcePath, destPath, g.cfg)
+		if err != nil {
+			return fmt.Errorf("error generating file from template. %w", err)
+		}
+	}
+
+	return nil
+}
+
+// updateProviders generate function declarations for selected infrastructure and update providers
+func (g *InfraGenerator) updateProviders(modPath string, selectedChoices []string) error {
 	var functions []string
-	for _, index := range selectedItems {
-		funcPath := utility.IgnoreWindowsPath(filepath.Join(".", "templates", "wesionary", "infrastructure", g.choice.Templates[index]))
-		funcDecl := utility.GetFunctionDeclarations(funcPath, templates.FS)
+	for _, choice := range selectedChoices {
+		funcPath := filepath.Join(".", "templates", "wesionary", "infrastructure", choice+".tmpl")
+		funcPath = utils.IgnoreWindowsPath(funcPath)
+
+		funcDecl, err := gengast.GetFunctionDeclarations(g.fs, funcPath)
+		if err != nil {
+			return fmt.Errorf("error generating function declarations, path: %s, err: %w", funcPath, err)
+		}
 		functions = append(functions, funcDecl...)
 	}
 
-	updatedCode := utility.AddListOfProvideInFxOptions(g.modPath, functions)
-	utility.WriteContentToPath(g.modPath, updatedCode)
-
-	for _, item := range selectedItems {
-		currTemplate := g.choice.Templates[item]
-		templatePath := filepath.Join(".", "templates", "wesionary", "infrastructure", currTemplate)
-		templatePath = utility.IgnoreWindowsPath(templatePath)
-
-		targetRoot := filepath.Join(data.Directory, "pkg", "infrastructure", strings.Replace(currTemplate, ".tmpl", ".go", 1))
-
-		utility.GenerateFromEmbeddedTemplate(templates.FS, templatePath, targetRoot, data)
+	providerCode, err := gengast.AddListOfProvideInFxOptions(modPath, functions)
+	if err != nil {
+		return fmt.Errorf("error generating providers list. %w", err)
 	}
 
-	selectedInfra := g.GetSelectedItems(selectedItems)
-	selectedItems = g.Service.SimilarChoice(selectedInfra)
-
-	if err := g.Service.Generate(data, selectedItems); err != nil {
-		return fmt.Errorf("Generation error: %v\n", err)
+	if err := utils.WriteToPath(modPath, providerCode); err != nil {
+		return fmt.Errorf("couldn't write to: %s, err: %w", modPath, err)
 	}
 
 	return nil

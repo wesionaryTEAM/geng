@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"github.com/mukezhz/geng/pkg/utility"
+	"github.com/mukezhz/geng/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var startProjectCmd = &cobra.Command{
-	Use:   "start [project name]",
-	Short: "Execute the project",
+var runStartCmd = &cobra.Command{
+	Use:   "run:start",
+	Short: "Run the project execution cmd",
 	Long: `
 Execute the project:
 Alias to "go run main.go app:serve"
@@ -25,7 +25,7 @@ func startProject(_ *cobra.Command, args []string) {
 	}
 	commands := []string{"run", "main.go"}
 	// execute command from golang
-	err := utility.ExecuteCommand(program, commands, args...)
+	err := utils.ExecuteCommand(program, commands, args...)
 	if err != nil {
 		return
 	}
